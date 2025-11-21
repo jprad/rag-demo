@@ -1,0 +1,108 @@
+# RAG Demo Configuration
+# This file defines all swappable components and their configurations
+
+# Embedding Configuration
+embeddings:
+  provider: "sentence-transformers"  # Options: sentence-transformers, openai, huggingface
+  config:
+    model_name: "all-MiniLM-L6-v2"  # Fast and efficient embedding model
+    device: "cpu"  # Options: cpu, cuda, mps
+    normalize_embeddings: true
+
+# Vector Database Configuration
+vector_db:
+  provider: "qdrant"  # Options: qdrant, chroma, pinecone
+  config:
+    host: "localhost"
+    port: 6333
+    collection_name: "documentation"
+    distance_metric: "cosine"  # Options: cosine, euclidean, dot
+    vector_size: 384  # Must match embedding model output size
+
+# LLM Configuration
+llm:
+  provider: "ollama"  # Options: ollama, openai, anthropic
+  config:
+    model: "llama3"  # Options: llama3, mistral, codellama, etc.
+    base_url: "http://localhost:11434"
+    temperature: 0.7
+    max_tokens: 2000
+    top_p: 0.9
+
+# Document Loader Configuration
+document_loader:
+  type: "web"  # Options: web, file, api
+  config:
+    preserve_structure: false  # Default to clean text
+    extract_code_blocks: true
+    extract_headers: true
+    timeout: 30
+    user_agent: "RAG-Demo-Bot/1.0"
+
+# Chunking Strategy Configuration
+chunking:
+  strategy: "recursive"  # Options: recursive, semantic, fixed, paragraph
+  config:
+    chunk_size: 1000
+    chunk_overlap: 200
+    separators: ["\n\n", "\n", ". ", " ", ""]
+    length_function: "tiktoken"  # Options: tiktoken, len, custom
+
+# Retrieval Configuration
+retrieval:
+  strategy: "hybrid"  # Options: semantic, keyword, hybrid, mmr
+  config:
+    top_k: 5
+    score_threshold: 0.7
+    rerank: false
+    rerank_model: null
+
+# RAG Pipeline Configuration
+rag:
+  prompt_template: "default"  # Options: default, custom, conversational
+  include_sources: true
+  max_context_length: 4000
+  response_format: "markdown"
+
+# Web Scraping Sources
+sources:
+  ansible:
+    url: "https://docs.ansible.com/"
+    enabled: true
+    max_depth: 3
+    include_patterns: ["/docs/", "/ansible/"]
+    exclude_patterns: ["/archive/", "/blog/"]
+
+  terraform:
+    url: "https://developer.hashicorp.com/terraform/docs"
+    enabled: true
+    max_depth: 3
+    include_patterns: ["/docs/", "/language/", "/cli/"]
+    exclude_patterns: []
+
+  packer:
+    url: "https://developer.hashicorp.com/packer/docs"
+    enabled: true
+    max_depth: 3
+    include_patterns: ["/docs/"]
+    exclude_patterns: []
+
+  vagrant:
+    url: "https://developer.hashicorp.com/vagrant/docs"
+    enabled: true
+    max_depth: 3
+    include_patterns: ["/docs/"]
+    exclude_patterns: []
+
+  terraform_provider_esxi:
+    url: "https://registry.terraform.io/providers/josenk/esxi/latest/docs"
+    enabled: true
+    max_depth: 2
+    include_patterns: ["/docs/"]
+    exclude_patterns: []
+
+# Logging Configuration
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/rag_demo.log"
