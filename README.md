@@ -9,6 +9,7 @@ A modular Retrieval-Augmented Generation (RAG) system for querying infrastructur
 - **Open-Source Stack**: Self-hosted components (Qdrant, Ollama, sentence-transformers)
 - **Interactive Chat Interface**: Streamlit-based web UI with streaming responses
 - **Configurable Retrieval**: Semantic, hybrid, and keyword-based strategies
+- **Advanced Re-ranking**: Cross-encoder, MMR, and LLM-based re-ranking for improved accuracy
 - **Flexible Chunking**: Recursive, fixed-size, and paragraph-based strategies
 
 ## Architecture
@@ -61,6 +62,7 @@ A modular Retrieval-Augmented Generation (RAG) system for querying infrastructur
 | **Web Scraping**   | BeautifulSoup + html2text | Playwright                      |
 | **Chunking**       | Recursive                 | Fixed-size, Paragraph, Semantic |
 | **Retrieval**      | Semantic/Hybrid           | Keyword, MMR                    |
+| **Re-ranking**     | Cross-Encoder (optional)  | Score-norm, MMR, LLM, None      |
 | **UI**             | Streamlit                 | -                                |
 
 ## Prerequisites
@@ -243,6 +245,28 @@ retrieval:
     top_k: 5
     score_threshold: 0.7
 ```
+
+#### Enable Re-ranking (Improves Retrieval Quality)
+
+Re-ranking refines initial retrieval results using more sophisticated scoring models:
+
+```yaml
+retrieval:
+  reranker:
+    type: "cross-encoder"  # Options: none, cross-encoder, score-norm, mmr, llm
+    config:
+      model_name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      device: "cpu"
+```
+
+**Re-ranking Options:**
+- `cross-encoder`: Uses a cross-encoder model for high-quality relevance scoring (recommended)
+- `score-norm`: Simple score normalization (minmax, zscore, softmax)
+- `mmr`: Maximum Marginal Relevance for diversity
+- `llm`: LLM-based scoring (slower but very accurate)
+- `none`: Disable re-ranking (default)
+
+**Note:** Cross-encoder re-ranking significantly improves retrieval accuracy but adds ~100-300ms latency per query.
 
 ### Adding New Documentation Sources
 

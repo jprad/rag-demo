@@ -54,8 +54,20 @@ retrieval:
   config:
     top_k: 5
     score_threshold: 0.7
-    rerank: false
-    rerank_model: null
+
+  # Re-ranking Configuration (optional, improves retrieval quality)
+  reranker:
+    type: "none"  # Options: none, cross-encoder, score-norm, mmr, llm
+    config:
+      # Cross-encoder specific settings
+      model_name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+      device: "cpu"  # Options: cpu, cuda, mps
+
+      # Score normalization settings (for score-norm type)
+      method: "minmax"  # Options: minmax, zscore, softmax
+
+      # MMR settings (for mmr type)
+      lambda_param: 0.5  # Trade-off between relevance (1.0) and diversity (0.0)
 
 # RAG Pipeline Configuration
 rag:

@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from src.embeddings.factory import EmbeddingProviderFactory
 from src.retrieval.factory import VectorStoreFactory
+from src.retrieval.rerankers import Reranker, RerankerFactory
 from src.utils.config_loader import ConfigLoader
 from src.utils.interfaces import RetrievalStrategy
 
@@ -15,6 +16,7 @@ class SemanticRetrievalStrategy(RetrievalStrategy):
         self,
         config: ConfigLoader,
         collection_name: Optional[str] = None,
+        reranker: Optional[Reranker] = None,
     ):
         """
         Initialize semantic retrieval strategy.
@@ -22,6 +24,7 @@ class SemanticRetrievalStrategy(RetrievalStrategy):
         Args:
             config: Configuration loader
             collection_name: Vector database collection name
+            reranker: Optional reranker instance
         """
         self.config = config
 
@@ -41,6 +44,21 @@ class SemanticRetrievalStrategy(RetrievalStrategy):
         self.collection_name = collection_name or vector_db_config.get("config", {}).get(
             "collection_name", "documentation"
         )
+
+        # Initialize reranker if not provided
+        if reranker is None:
+            retrieval_config = config.get_retrieval_config()
+            reranker_config = retrieval_config.get("reranker", {})
+            reranker_type = reranker_config.get("type", "none")
+            if reranker_type and reranker_type != "none":
+                self.reranker = RerankerFactory.create(
+                    reranker_type,
+                    reranker_config.get("config", {}),
+                )
+            else:
+                self.reranker = None
+        else:
+            self.reranker = reranker
 
     def retrieve(
         self,
@@ -63,6 +81,9 @@ class SemanticRetrievalStrategy(RetrievalStrategy):
         Returns:
             List of retrieved documents with scores
         """
+        # If reranking, retrieve more candidates
+        retrieval_k = top_k * 3 if self.reranker else top_k
+
         # Embed query
         query_vector = self.embedding_provider.embed_query(query)
 
@@ -70,10 +91,14 @@ class SemanticRetrievalStrategy(RetrievalStrategy):
         results = self.vector_store.search(
             collection_name=self.collection_name,
             query_vector=query_vector,
-            top_k=top_k,
+            top_k=retrieval_k,
             filter_dict=filters,
             score_threshold=score_threshold,
         )
+
+        # Apply reranking if configured
+        if self.reranker and results:
+            results = self.reranker.rerank(query, results, top_k=top_k)
 
         return results
 
@@ -86,6 +111,7 @@ class HybridRetrievalStrategy(RetrievalStrategy):
         config: ConfigLoader,
         collection_name: Optional[str] = None,
         semantic_weight: float = 0.7,
+        reranker: Optional[Reranker] = None,
     ):
         """
         Initialize hybrid retrieval strategy.
@@ -94,10 +120,27 @@ class HybridRetrievalStrategy(RetrievalStrategy):
             config: Configuration loader
             collection_name: Vector database collection name
             semantic_weight: Weight for semantic scores (0-1)
+            reranker: Optional reranker instance
         """
-        self.semantic_strategy = SemanticRetrievalStrategy(config, collection_name)
+        # Don't pass reranker to semantic strategy, handle it here
+        self.semantic_strategy = SemanticRetrievalStrategy(config, collection_name, reranker=None)
         self.semantic_weight = semantic_weight
         self.keyword_weight = 1.0 - semantic_weight
+
+        # Initialize reranker if not provided
+        if reranker is None:
+            retrieval_config = config.get_retrieval_config()
+            reranker_config = retrieval_config.get("reranker", {})
+            reranker_type = reranker_config.get("type", "none")
+            if reranker_type and reranker_type != "none":
+                self.reranker = RerankerFactory.create(
+                    reranker_type,
+                    reranker_config.get("config", {}),
+                )
+            else:
+                self.reranker = None
+        else:
+            self.reranker = reranker
 
     def retrieve(
         self,
@@ -118,8 +161,9 @@ class HybridRetrievalStrategy(RetrievalStrategy):
         Returns:
             List of retrieved documents with scores
         """
-        # Get more results for reranking
-        semantic_top_k = top_k * 2
+        # Get more results for hybrid scoring and potential reranking
+        retrieval_multiplier = 3 if self.reranker else 2
+        semantic_top_k = top_k * retrieval_multiplier
 
         # Semantic search
         semantic_results = self.semantic_strategy.retrieve(
@@ -134,7 +178,7 @@ class HybridRetrievalStrategy(RetrievalStrategy):
 
         for result in semantic_results:
             text_terms = set(result["text"].lower().split())
-            keyword_score = len(query_terms & text_terms) / len(query_terms)
+            keyword_score = len(query_terms & text_terms) / len(query_terms) if query_terms else 0
 
             # Combine scores
             hybrid_score = (
@@ -146,7 +190,14 @@ class HybridRetrievalStrategy(RetrievalStrategy):
         # Re-rank by hybrid score
         semantic_results.sort(key=lambda x: x.get("hybrid_score", 0), reverse=True)
 
-        return semantic_results[:top_k]
+        # Take top candidates before reranking
+        results = semantic_results[:top_k * 2] if self.reranker else semantic_results[:top_k]
+
+        # Apply reranking if configured
+        if self.reranker and results:
+            results = self.reranker.rerank(query, results, top_k=top_k)
+
+        return results
 
 
 class RetrievalStrategyFactory:
