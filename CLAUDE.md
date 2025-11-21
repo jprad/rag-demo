@@ -11,9 +11,9 @@ This repository contains a demonstration of Retrieval-Augmented Generation (RAG)
 
 ### Current Status
 
-**Development Stage:** Initial setup (greenfield project)
+**Development Stage:** Core framework complete, ready for testing
 **Primary Branch:** `main`
-**Current State:** Repository initialized with LICENSE only
+**Current State:** Full modular RAG framework implemented with Streamlit UI
 
 ## Repository Purpose
 
@@ -435,6 +435,15 @@ When working on this repository, AI assistants should:
 - [ ] Test with sample data before production deployment
 
 ## Version History
+
+### v0.2.0 - 2025-11-21 (Core Implementation)
+- Full modular RAG framework implemented
+- Swappable components: embeddings, vector DB, LLM, chunking, retrieval
+- Qdrant vector store with Ollama LLM integration
+- Web documentation loaders for 5 IaC tools
+- Streamlit chat interface with streaming responses
+- CLI tools for ingestion and querying
+- Comprehensive configuration system
 
 ### v0.1.0 - 2025-11-21 (Initial)
 - Repository initialized
